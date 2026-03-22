@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fab-card-vault-cli"
+version = "0.1.0"
+description = "JSON-first CLI for the Flesh and Blood CardVault API"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.13"
+dependencies = [
+  "httpx>=0.28.1,<1",
+  "rich>=14.0.0,<15",
+  "typer>=0.16.0,<1",
+]
+
+[project.scripts]
+fab-card-vault = "fab_card_vault_cli.cli:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.4.1,<9",
+  "pytest-httpx>=0.35.0,<1",
+  "ruff>=0.11.0,<1",
+  "ty>=0.0.24,<0.1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ty.src]
+include = ["src", "tests"]
