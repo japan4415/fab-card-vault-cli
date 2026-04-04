@@ -72,6 +72,7 @@ class CardDetail:
     rarity: str | None = None
     artist: str | None = None
     variants: list[Variant] | None = None
+    rulings: list[str] | None = None
 
 
 @dataclass(slots=True)
@@ -93,6 +94,13 @@ class ProductGroupSummary:
     products: list[ProductSummary]
     productType: str | None = None
     releaseDate: str | None = None
+
+
+@dataclass(slots=True)
+class Ruling:
+    cardName: str
+    setName: str
+    notes: list[str]
 
 
 @dataclass(slots=True)
