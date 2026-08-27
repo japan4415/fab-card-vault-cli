@@ -304,6 +304,85 @@ def test_invalid_page_returns_json_error_on_stderr(httpx_mock) -> None:
     assert payload["error"]["details"]["page"] == 999
 
 
+def test_rulings_command_returns_matching_results(monkeypatch) -> None:
+    from fab_card_vault_cli import cli as cli_mod
+    from fab_card_vault_cli.models import Ruling
+
+    fake = [Ruling(cardName="Awakening", setName="Arcane Rising", notes=["Note A", "Note B"])]
+    monkeypatch.setattr(cli_mod, "search_rulings", lambda _q: fake)
+
+    result = runner.invoke(app, ["rulings", "Awakening"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert isinstance(payload, list)
+    assert payload[0]["cardName"] == "Awakening"
+    assert payload[0]["notes"] == ["Note A", "Note B"]
+
+
+def test_rulings_command_not_found_returns_error(monkeypatch) -> None:
+    from fab_card_vault_cli import cli as cli_mod
+
+    monkeypatch.setattr(cli_mod, "search_rulings", lambda _q: [])
+
+    result = runner.invoke(app, ["rulings", "NonExistentCard"])
+
+    assert result.exit_code == 1
+    payload = json.loads(result.stderr)
+    assert payload["error"]["type"] == "not_found"
+
+
+def test_detail_includes_rulings_when_available(httpx_mock, monkeypatch) -> None:
+    from fab_card_vault_cli import cli as cli_mod
+    from fab_card_vault_cli.models import Ruling
+
+    httpx_mock.add_response(
+        url="https://api.cardvault.fabtcg.com/carddb/api/v1/card_id/awakening-3/",
+        json={
+            "count": 1,
+            "next": None,
+            "previous": None,
+            "results": [
+                {
+                    "card_id": "awakening-3",
+                    "cores": [{"pitch": "3", "cost": "2"}],
+                    "card_prints": [
+                        {
+                            "print_id": "ELE006",
+                            "is_default": True,
+                            "rarity": "majestic",
+                            "product": {"product_name": "Tales of Aria"},
+                            "print_set": {"set_name": "Tales of Aria"},
+                            "faces": [
+                                {
+                                    "face_id": "ELE006",
+                                    "face_language": "en",
+                                    "printed_name": "Awakening",
+                                    "printed_rules_text": "English text",
+                                    "printed_typebox": "Elemental Guardian Instant",
+                                    "printed_pitch": 3,
+                                    "printed_cost": "2",
+                                    "layout_position": 10,
+                                    "image": {"normal": "https://example.com/default.webp"},
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+        },
+    )
+
+    fake = [Ruling(cardName="Awakening", setName="Arcane Rising", notes=["Ruling 1", "Ruling 2"])]
+    monkeypatch.setattr(cli_mod, "search_rulings", lambda _q: fake)
+
+    result = runner.invoke(app, ["detail", "awakening-3"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["rulings"] == ["Ruling 1", "Ruling 2"]
+
+
 def test_pretty_output_uses_human_readable_rendering(httpx_mock) -> None:
     httpx_mock.add_response(
         url=(

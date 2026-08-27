@@ -7,8 +7,9 @@ import typer
 from rich.console import Console
 
 from fab_card_vault_cli.client import CardVaultClient
-from fab_card_vault_cli.errors import FabCardVaultError
+from fab_card_vault_cli.errors import FabCardVaultError, NotFoundError
 from fab_card_vault_cli.output import emit_error, emit_payload
+from fab_card_vault_cli.rulings import search_rulings
 
 OutputFormat = Literal["json", "pretty"]
 
@@ -100,7 +101,13 @@ def detail_command(
 ) -> None:
     state = get_state(ctx)
     try:
-        emit_payload(state.stdout, state.client.get_detail(card_id, print_id), state.output_format)
+        detail = state.client.get_detail(card_id, print_id)
+        matched = search_rulings(detail.enName)
+        if matched:
+            exact = [r for r in matched if r.cardName.lower() == detail.enName.lower()]
+            if exact:
+                detail.rulings = [note for r in exact for note in r.notes]
+        emit_payload(state.stdout, detail, state.output_format)
     except FabCardVaultError as error:
         handle_error(state, error)
 
@@ -118,6 +125,18 @@ def products_command(
         emit_payload(state.stdout, state.client.get_products(page), state.output_format)
     except FabCardVaultError as error:
         handle_error(state, error)
+
+
+@app.command("rulings")
+def rulings_command(
+    ctx: typer.Context,
+    query: Annotated[str, typer.Argument(help="Card name to search rulings for.")],
+) -> None:
+    state = get_state(ctx)
+    results = search_rulings(query)
+    if not results:
+        handle_error(state, NotFoundError(f"No rulings found for '{query}'.", {"query": query}))
+    emit_payload(state.stdout, results, state.output_format)
 
 
 def main() -> None:
